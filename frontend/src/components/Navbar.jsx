@@ -2,10 +2,10 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { ShoppingBag, User, LogOut, ShieldCheck, Layers } from 'lucide-react';
+import { ShoppingBag, User, LogOut, ShieldCheck, Layers, BookmarkCheck } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, role, logout } = useAuth();
+  const { user, isAuthenticated, isBuyer, role, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -80,6 +80,16 @@ export const Navbar = () => {
               <Layers className="w-4 h-4 text-gray-500" />
               Active Pools
             </Link>
+
+            {isAuthenticated && (
+              <Link
+                to="/my-reservations"
+                className="text-sm font-medium text-gray-700 hover:text-emerald-600 flex items-center gap-1.5 transition"
+              >
+                <BookmarkCheck className="w-4 h-4 text-emerald-600" />
+                My Reservations
+              </Link>
+            )}
           </nav>
 
           {/* Auth State CTAs */}
