@@ -16,3 +16,4 @@
     "build:frontend": "npm --prefix frontend run build"
   }
 }
+

@@ -14,6 +14,7 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { JWT_ISSUER, JWT_AUDIENCE } = require('../middlewares/authGuard');
+const { sendEmailVerificationOtp } = require('../services/emailService');
 
 if (!process.env.JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start.');
@@ -81,14 +82,14 @@ class AuthController {
         });
       }
 
-      if (phone && !/^[0-9+]{10,15}$/.test(phone.replace(/[\s-]/g, ''))) {
+      const cleanPhone = phone ? phone.replace(/[\s-]/g, '') : null;
+
+      if (cleanPhone && !/^[0-9]{11}$/.test(cleanPhone)) {
         return res.status(400).json({
           success: false,
-          error: { code: 'VALIDATION_ERROR', message: 'Invalid phone number format. Must contain 10-15 digits.' }
+          error: { code: 'VALIDATION_ERROR', message: 'Phone number must be exactly 11 digits (e.g. 03001234567)' }
         });
       }
-
-      const cleanPhone = phone ? phone.replace(/[\s-]/g, '') : null;
 
       // 3. Uniqueness Check
       const [existing] = await db.query(
@@ -106,11 +107,15 @@ class AuthController {
       // 4. Secure Bcrypt Password Hash (12 rounds)
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // 5. Database Insertion — ALWAYS force role = 'BUYER', is_verified = 0, UNVERIFIED
+      // 5. Generate 6-digit verification OTP (valid 24h)
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // 6. Database Insertion — ALWAYS force role = 'BUYER', is_verified = 0, UNVERIFIED
       const [result] = await db.query(
         `INSERT INTO users
-          (full_name, business_name, email, phone, password_hash, role, business_type, city, area, address, verification_status, is_verified)
-         VALUES (?, ?, ?, ?, ?, 'BUYER', 'General', 'Lahore', ?, ?, 'UNVERIFIED', 0)`,
+          (full_name, business_name, email, phone, password_hash, role, business_type, city, area, address, verification_status, is_verified, verification_otp, otp_expires_at)
+         VALUES (?, ?, ?, ?, ?, 'BUYER', 'General', 'Lahore', ?, ?, 'UNVERIFIED', 0, ?, ?)`,
         [
           full_name || null,
           business_name || null,
@@ -118,36 +123,34 @@ class AuthController {
           cleanPhone,
           passwordHash,
           area || null,
-          address || null
+          address || null,
+          otp,
+          otpExpiresAt
         ]
       );
 
       const userId = result.insertId;
 
-      // 6. Audit Trail
+      // 7. Audit Trail
       await db.query(
         `INSERT INTO system_audit_logs (actor_id, actor_role, action, entity_name, entity_id, new_value)
          VALUES (?, 'SYSTEM', 'USER_REGISTERED', 'users', ?, ?)`,
         [userId, userId, JSON.stringify({ email, phone: cleanPhone, role: 'BUYER' })]
       );
 
-      // 7. Issue Session Token
-      const token = signToken({ id: userId, email: email || null, phone: cleanPhone, role: 'BUYER' });
+      // 8. Send Verification OTP via Email (if email provided)
+      if (email) {
+        await sendEmailVerificationOtp(email, otp);
+      }
 
       return res.status(201).json({
         success: true,
-        message: 'Account created successfully. Welcome to MilJor!',
+        requires_verification: true,
+        message: 'Account registered successfully. We have sent a 6-digit verification code to your email.',
         data: {
-          token,
-          user: {
-            id: userId,
-            full_name: full_name || null,
-            email: email || null,
-            phone: cleanPhone,
-            role: 'BUYER',
-            verification_status: 'UNVERIFIED',
-            is_verified: false
-          }
+          user_id: userId,
+          email: email || null,
+          phone: cleanPhone
         }
       });
 
@@ -213,6 +216,18 @@ class AuthController {
       const isPasswordValid = await bcrypt.compare(password, user.password_hash);
       if (!isPasswordValid) {
         return res.status(401).json(genericAuthError);
+      }
+
+      // Check if account is email-verified
+      if (!user.is_verified || user.verification_status === 'UNVERIFIED') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'EMAIL_NOT_VERIFIED',
+            message: 'Please verify your email first before logging in',
+            email: user.email
+          }
+        });
       }
 
       // Sign session JWT
@@ -360,6 +375,161 @@ class AuthController {
       return res.status(500).json({
         success: false,
         error: { code: 'SERVER_ERROR', message: 'Application failed. Please try again.' }
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/v1/auth/verify-email
+  // Verifies 6-digit OTP sent to user's email
+  // ---------------------------------------------------------------------------
+  async verifyEmail(req, res) {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Email and verification OTP are required' }
+        });
+      }
+
+      const cleanEmail = email.trim();
+      const cleanOtp = String(otp).trim();
+
+      const [users] = await db.query(
+        'SELECT * FROM users WHERE email = ?',
+        [cleanEmail]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_NOT_FOUND', message: 'No account found with this email' }
+        });
+      }
+
+      const user = users[0];
+
+      if (user.is_verified && user.verification_status !== 'UNVERIFIED') {
+        const token = signToken({ id: user.id, email: user.email, phone: user.phone, role: user.role });
+        return res.status(200).json({
+          success: true,
+          message: 'Account is already verified. You can log in.',
+          data: { token, user: safeUser(user) }
+        });
+      }
+
+      // Expiry check
+      if (user.otp_expires_at && new Date() > new Date(user.otp_expires_at)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'OTP_EXPIRED', message: 'Verification code has expired. Please request a new one.' }
+        });
+      }
+
+      // Match check
+      if (!user.verification_otp || String(user.verification_otp).trim() !== cleanOtp) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'INVALID_OTP', message: 'Invalid verification OTP code. Please check and try again.' }
+        });
+      }
+
+      // Update to VERIFIED
+      await db.query(
+        `UPDATE users
+         SET is_verified = 1,
+             verification_status = 'VERIFIED',
+             verification_otp = NULL,
+             otp_expires_at = NULL,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [user.id]
+      );
+
+      // Audit log
+      await db.query(
+        `INSERT INTO system_audit_logs (actor_id, actor_role, action, entity_name, entity_id, new_value)
+         VALUES (?, ?, 'USER_EMAIL_VERIFIED', 'users', ?, ?)`,
+        [user.id, user.role, user.id, JSON.stringify({ verified_at: new Date() })]
+      );
+
+      // Issue session token
+      const token = signToken({ id: user.id, email: user.email, phone: user.phone, role: user.role });
+
+      // Refresh safe user
+      const [updatedUsers] = await db.query('SELECT * FROM users WHERE id = ?', [user.id]);
+      const updatedUser = updatedUsers[0];
+
+      return res.status(200).json({
+        success: true,
+        message: 'Email verified successfully! Welcome to MilJor.',
+        data: {
+          token,
+          user: safeUser(updatedUser)
+        }
+      });
+    } catch (error) {
+      console.error('Verify Email Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'SERVER_ERROR', message: 'Email verification failed. Please try again.' }
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/v1/auth/resend-otp
+  // Resends fresh 6-digit verification OTP to user's email
+  // ---------------------------------------------------------------------------
+  async resendOtp(req, res) {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: 'Email address is required to resend OTP' }
+        });
+      }
+
+      const cleanEmail = email.trim();
+      const [users] = await db.query('SELECT * FROM users WHERE email = ?', [cleanEmail]);
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_NOT_FOUND', message: 'No account found with this email' }
+        });
+      }
+
+      const user = users[0];
+      if (user.is_verified && user.verification_status !== 'UNVERIFIED') {
+        return res.status(200).json({
+          success: true,
+          message: 'Account is already verified. You can log in.'
+        });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await db.query(
+        'UPDATE users SET verification_otp = ?, otp_expires_at = ?, updated_at = NOW() WHERE id = ?',
+        [otp, otpExpiresAt, user.id]
+      );
+
+      await sendEmailVerificationOtp(cleanEmail, otp);
+
+      return res.status(200).json({
+        success: true,
+        message: 'A fresh verification OTP has been sent to your email.'
+      });
+    } catch (error) {
+      console.error('Resend OTP Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'SERVER_ERROR', message: 'Failed to resend verification OTP.' }
       });
     }
   }
