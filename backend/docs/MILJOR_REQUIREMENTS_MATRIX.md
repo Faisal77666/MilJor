@@ -1,0 +1,22 @@
+# MilJor — Requirements & Feature Status Matrix
+
+| ID | Feature / Module | Implementation Status | Technical Notes |
+| :--- | :--- | :--- | :--- |
+| **REQ-01** | Database Architecture & Normalization | **COMPLETE AND VERIFIED** | Unified schema verified in MySQL. `schema_migrations` tracks versions `001` through `012`. Verified restorable backups tested in `miljor_test_db`. Single source of truth for payments, reservations, mutation history, inventory allocations, and durable business events (`reservation_business_events`). Fail-closed virtual column for reservation uniqueness. |
+| **REQ-02** | Base Seed & Catalog Data | **COMPLETE AND VERIFIED** | Base catalog (8 products), normalized physical specifications (8 exact specs with canonical SHA256 hashes), verified supplier listings (3 offers), and additive `pools.product_spec_id` column. Out-of-stock exclusion, delivered price transparency, and dimension integrity enforced (16L != 16kg). |
+| **REQ-03** | Supplier Verification Levels & Admin Review | **COMPLETE AND VERIFIED** | Tiered levels (`LEVEL_1_CONTACT`, `LEVEL_2_BUSINESS`, `LEVEL_3_QUALITY`); admin verification review endpoint with self-approval prohibition mounted and verified. |
+| **REQ-04** | Secret & Credentials Protection | **COMPLETE AND VERIFIED** | `.gitignore` excludes `.env`, `logs/`, `node_modules/`, `database/backups/`. `.env.example` provides sanitised placeholders. |
+| **REQ-05** | Buyer Account Free Access & RBAC | **COMPLETE AND VERIFIED** | Public registration forces `BUYER`; least-privilege role guards (`FINANCE_ADMIN`, `OPERATIONS_ADMIN`, `VERIFICATION_ADMIN`, `SUPPORT_ADMIN`, `SUPER_ADMIN`); real-time DB active status check in `protect`. 16/16 security tests passed. |
+| **REQ-06** | Slab-Based Buyer Marketplace Fee | **COMPLETE AND VERIFIED** | `feeService.js` calculates fee slabs with Rs. 30 minimum cap against `buyer_fee_slabs` table. |
+| **REQ-07** | Regular Pool State Machine & Engine | **PARTIALLY IMPLEMENTED (Parts 4A–4C.2B VERIFIED)** | Part 4A/4A.1 architecture complete; Part 4B.1 foundation verified (16/16); Part 4B.2 atomic DRAFT creation verified (22/22); Part 4B.3 tier pricing, terms & safe publishing verified (25/25); Pre-4B.4 idempotency crash recovery verified (11/11); Part 4B.4 buyer reservations & capacity control verified (28/28); Part 4B.4.1 reservation safety hardening (18/18); Part 4B.4.2 critical reservation integrity corrections OBS-21–25 verified (20/20); Part 4C.1 reservation mutations, cancellations, dynamic repricing & OBS-26 verified (56/56); Part 4C.2A authoritative pool progress read model, tier pricing transparency & OBS-27–31 verified (28/28); Part 4C.2B durable reservation events, buyer/supplier visibility, OBS-32–34 verified (30/30). Sequential platform regression across all prior gates 100% passed (312 total assertions). Part 4C.2C (pool qualification transition / confirmation / closing) strictly not started. |
+| **REQ-08** | Payment & Escrow Single Source | **PARTIALLY IMPLEMENTED** | `payments` schema active, provider abstraction ready; Phase 4 end-to-end gate pending. |
+| **REQ-09** | Order Disputes Flow | **PARTIALLY IMPLEMENTED** | `order_disputes` schema active and `disputeRoutes.js` mapped; Phase 4/5 integration pending. |
+| **REQ-10** | Flash Clearance Pools | **BACKEND ONLY** | `flash_pools` table active with stock & clearance columns; APIs and reserve logic missing. |
+| **REQ-11** | Versioned Private RFQs | **BACKEND ONLY** | `rfqs` and `rfq_quotes` tables created; controllers and comparison APIs missing. |
+| **REQ-12** | Recurring Procurement Price Guard | **BACKEND ONLY** | `recurring_contracts` table created; automated schedule and recurring generator missing. |
+| **REQ-13** | Delivery & Cluster Logistics | **MISSING** | No dedicated delivery tracking, driver assignment, or cluster logistics controllers. |
+| **REQ-14** | Invoicing & PDF Generation | **MISSING** | No invoice generation module implemented. |
+| **REQ-15** | Notifications (SMS / Email) | **MISSING** | No dispatch queue or provider integration active. |
+| **REQ-16** | Google / Apple OAuth Login | **BLOCKED BY EXTERNAL CREDENTIALS** | Strategy configuration pending user-provided client credentials setup. |
+| **REQ-17** | Safepay Sandbox Payment Gateway | **PARTIALLY IMPLEMENTED** | Safepay Sandbox selected as intended provider; MOCK_GATEWAY abstraction implemented for dev; Part 5 payment unification pending. |
+| **REQ-18** | Live SMS OTP Gateway | **BLOCKED BY EXTERNAL CREDENTIALS** | No telecom / SMS provider API credentials available. |

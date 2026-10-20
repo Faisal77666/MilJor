@@ -1,0 +1,18 @@
+{
+  "name": "miljor",
+  "version": "1.0.0",
+  "description": "MilJor — Lahore-first B2B Collective Food Procurement Marketplace",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "start:backend": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "test:backend": "npm --prefix backend test",
+    "start:frontend": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  }
+}
