@@ -79,6 +79,24 @@ export const AuthProvider = ({ children }) => {
   // Register handler
   const register = async (formData) => {
     const response = await authApi.register(formData);
+    if (response.success) {
+      if (response.data?.token) {
+        const newToken = response.data.token;
+        const newUser = response.data.user;
+
+        localStorage.setItem('miljor_token', newToken);
+        localStorage.setItem('miljor_user', JSON.stringify(newUser));
+        setToken(newToken);
+        setUser(newUser);
+      }
+      return response;
+    }
+    throw new Error(response.error?.message || 'Registration failed');
+  };
+
+  // Verify Email OTP handler
+  const verifyEmail = async ({ email, otp }) => {
+    const response = await authApi.verifyEmail({ email, otp });
     if (response.success && response.data?.token) {
       const newToken = response.data.token;
       const newUser = response.data.user;
@@ -89,7 +107,12 @@ export const AuthProvider = ({ children }) => {
       setUser(newUser);
       return { success: true, user: newUser };
     }
-    throw new Error(response.error?.message || 'Registration failed');
+    throw new Error(response.error?.message || 'Verification failed');
+  };
+
+  // Resend OTP handler
+  const resendOtp = async ({ email }) => {
+    return await authApi.resendOtp({ email });
   };
 
   // Logout handler
@@ -108,6 +131,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
+    verifyEmail,
+    resendOtp,
     logout,
   };
 

@@ -5,6 +5,9 @@ import { Navbar } from './components/Navbar';
 import { PoolsPage } from './pages/PoolsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export function App() {
   return (
@@ -19,9 +22,20 @@ export function App() {
               <Route path="/pools" element={<PoolsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
+
+          <ToastContainer
+            position="top-right"
+            autoClose={3500}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
 
           {/* Simple B2B Footer */}
           <footer className="bg-white border-t border-gray-200 py-8 px-4 sm:px-6 lg:px-8 mt-auto">

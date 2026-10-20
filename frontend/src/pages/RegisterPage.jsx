@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 import { ShoppingBag, Lock, Mail, Phone, Building2, User, MapPin, AlertCircle, Check, ArrowRight } from 'lucide-react';
 
 const LAHORE_AREAS = [
@@ -78,10 +79,18 @@ export const RegisterPage = () => {
 
     setLoading(true);
     try {
-      await register(formData);
-      navigate('/pools');
+      const res = await register(formData);
+      if (res.requires_verification) {
+        toast.success('Account created! Please check your email for the 6-digit OTP verification code.');
+        navigate('/verify-email', { state: { email: formData.email } });
+      } else {
+        toast.success('Account registered successfully! Welcome to MilJor.');
+        navigate('/pools');
+      }
     } catch (err) {
-      setError(err.response?.data?.error?.message || err.message || 'Registration failed');
+      const msg = err.response?.data?.error?.message || err.message || 'Registration failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

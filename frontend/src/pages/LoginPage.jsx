@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { ShoppingBag, Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 export const LoginPage = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
@@ -18,18 +20,34 @@ export const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setUnverifiedEmail(null);
 
     if (!identifier.trim() || !password) {
-      setError('Please provide your email/phone and password');
+      const msg = 'Please provide your email/phone and password';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
     try {
       await login({ identifier: identifier.trim(), password });
+      toast.success('Signed in successfully! Welcome back.');
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error?.message || err.message || 'Login failed');
+      const errData = err.response?.data?.error;
+      const code = errData?.code;
+      const msg = errData?.message || err.message || 'Login failed';
+
+      if (code === 'EMAIL_NOT_VERIFIED') {
+        const targetEmail = errData?.email || (identifier.includes('@') ? identifier.trim() : '');
+        setUnverifiedEmail(targetEmail);
+        setError('Please verify your email first');
+        toast.error('Please verify your email first');
+      } else {
+        setError(msg);
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -53,12 +71,26 @@ export const LoginPage = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-800 text-sm">
-            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Authentication Error</p>
-              <p className="text-rose-700 text-xs mt-0.5">{error}</p>
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex flex-col gap-2 text-rose-800 text-sm">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Authentication Notice</p>
+                <p className="text-rose-700 text-xs mt-0.5">{error}</p>
+              </div>
             </div>
+            {unverifiedEmail && (
+              <div className="mt-2 pt-2 border-t border-rose-200/60 flex justify-end">
+                <Link
+                  to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                  state={{ email: unverifiedEmail }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition"
+                >
+                  Verify Email Now
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

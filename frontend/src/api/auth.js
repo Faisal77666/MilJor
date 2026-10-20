@@ -39,6 +39,18 @@ export const authApi = {
     }
   },
 
+  // Verify email with OTP
+  verifyEmail: async ({ email, otp }) => {
+    const res = await apiClient.post('/auth/verify-email', { email, otp });
+    return res.data;
+  },
+
+  // Resend OTP
+  resendOtp: async ({ email }) => {
+    const res = await apiClient.post('/auth/resend-otp', { email });
+    return res.data;
+  },
+
   // Apply for supplier verification
   applySupplier: async (data) => {
     const res = await apiClient.post('/auth/supplier/apply', data);

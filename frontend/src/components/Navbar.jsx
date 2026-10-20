@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 import { ShoppingBag, User, LogOut, ShieldCheck, Layers } from 'lucide-react';
 
 export const Navbar = () => {
@@ -9,6 +10,7 @@ export const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
+    toast.info('Logged out successfully.');
     navigate('/login');
   };
 

@@ -12,6 +12,8 @@ const { protect } = require('../../middlewares/authGuard');
 // ---------------------------------------------------------------------------
 router.post('/register', (req, res) => authController.register(req, res));
 router.post('/login', (req, res) => authController.login(req, res));
+router.post('/verify-email', (req, res) => authController.verifyEmail(req, res));
+router.post('/resend-otp', (req, res) => authController.resendOtp(req, res));
 
 // ---------------------------------------------------------------------------
 // Protected Routes
