@@ -42,8 +42,19 @@ export const RegisterPage = () => {
   const hasNumber = /[0-9]/.test(formData.password);
   const isPasswordValid = isLengthValid && hasLetter && hasNumber;
 
+  // Phone validation: exact 11 digits
+  const cleanPhone = formData.phone.replace(/\D/g, '');
+  const isPhoneValid = /^[0-9]{11}$/.test(cleanPhone);
+
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    if (name === 'phone') {
+      // Restrict strictly to digits and max 11 digits
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 11);
+      setFormData((prev) => ({ ...prev, phone: digitsOnly }));
+      return;
+    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -52,6 +63,11 @@ export const RegisterPage = () => {
 
     if (!formData.email && !formData.phone) {
       setError('Either an email address or phone number is required.');
+      return;
+    }
+
+    if (formData.phone && !/^[0-9]{11}$/.test(cleanPhone)) {
+      setError('Phone number must be exactly 11 digits (e.g. 03001234567).');
       return;
     }
 
@@ -121,7 +137,7 @@ export const RegisterPage = () => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                Full Name (Contact Person)
+                Full Name
               </label>
               <div className="relative">
                 <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -158,20 +174,45 @@ export const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                Mobile / WhatsApp (03XX...)
-              </label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700">
+                  Mobile / WhatsApp (Exact 11 Digits)
+                </label>
+                <span className={`text-[11px] font-semibold ${isPhoneValid ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {cleanPhone.length}/11 digits
+                </span>
+              </div>
               <div className="relative">
                 <Phone className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="tel"
                   name="phone"
                   required
+                  maxLength={11}
                   placeholder="03001234567"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className={`w-full pl-10 pr-3 py-2 text-sm bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition ${
+                    cleanPhone.length > 0 && !isPhoneValid
+                      ? 'border-amber-300 focus:ring-amber-500'
+                      : isPhoneValid
+                      ? 'border-emerald-300 focus:ring-emerald-500'
+                      : 'border-gray-200 focus:ring-emerald-500'
+                  }`}
                 />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                {isPhoneValid ? (
+                  <span className="text-emerald-600 font-semibold inline-flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Valid 11-digit mobile number
+                  </span>
+                ) : cleanPhone.length > 0 ? (
+                  <span className="text-amber-600 font-medium">
+                    {11 - cleanPhone.length} more digit{11 - cleanPhone.length === 1 ? '' : 's'} needed (must be exactly 11)
+                  </span>
+                ) : (
+                  <span className="text-gray-400">Must be exactly 11 digits (e.g. 03001234567)</span>
+                )}
               </div>
             </div>
           </div>
@@ -247,7 +288,7 @@ export const RegisterPage = () => {
           <div className="pt-2">
             <button
               type="submit"
-              disabled={loading || !isPasswordValid}
+              disabled={loading || !isPasswordValid || !isPhoneValid}
               className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl shadow-md shadow-emerald-200 transition disabled:opacity-50"
             >
               {loading ? (
@@ -277,3 +318,4 @@ export const RegisterPage = () => {
 };
 
 export default RegisterPage;
+

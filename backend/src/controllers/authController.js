@@ -81,14 +81,14 @@ class AuthController {
         });
       }
 
-      if (phone && !/^[0-9+]{10,15}$/.test(phone.replace(/[\s-]/g, ''))) {
+      const cleanPhone = phone ? phone.replace(/[\s-]/g, '') : null;
+
+      if (cleanPhone && !/^[0-9]{11}$/.test(cleanPhone)) {
         return res.status(400).json({
           success: false,
-          error: { code: 'VALIDATION_ERROR', message: 'Invalid phone number format. Must contain 10-15 digits.' }
+          error: { code: 'VALIDATION_ERROR', message: 'Phone number must be exactly 11 digits (e.g. 03001234567)' }
         });
       }
-
-      const cleanPhone = phone ? phone.replace(/[\s-]/g, '') : null;
 
       // 3. Uniqueness Check
       const [existing] = await db.query(

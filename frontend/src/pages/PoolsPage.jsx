@@ -193,3 +193,4 @@ export const PoolsPage = () => {
 };
 
 export default PoolsPage;
+
