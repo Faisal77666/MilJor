@@ -4,6 +4,8 @@
 // Tests 16 required security scenarios against live Express & MySQL
 // =============================================================================
 process.env.NODE_ENV = 'test';
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const assert = require('assert');
 const http = require('http');
 const jwt = require('jsonwebtoken');
@@ -142,13 +144,14 @@ async function runSecuritySuite() {
     // -------------------------------------------------------------------------
     await test('1. Buyer registration succeeds with valid credentials', async () => {
       const uniqueEmail = `test_reg_${Date.now()}@miljor.com`;
+      const uniquePhone = `0300${Math.floor(1000000 + Math.random() * 9000000)}`;
       const res = await api('/api/v1/auth/register', {
         method: 'POST',
         body: {
           full_name: 'Registered Buyer',
           email: uniqueEmail,
           password: 'Password123',
-          phone: '03009998877'
+          phone: uniquePhone
         }
       });
       assert.strictEqual(res.status, 201);

@@ -9,6 +9,30 @@ const orderController = require('../../controllers/orderController');
 const { protect, authorizeStrict } = require('../../middlewares/authGuard');
 const idempotencyGuard = require('../../middlewares/idempotencyGuard');
 
+// List calling buyer's orders
+router.get(
+  '/my',
+  protect,
+  authorizeStrict('BUYER'),
+  (req, res) => orderController.getMyOrders(req, res)
+);
+
+// Get authoritative order by ID
+router.get(
+  '/:id',
+  protect,
+  (req, res) => orderController.getOrderById(req, res)
+);
+
+// Create authoritative order from accepted reservation commitment
+router.post(
+  '/',
+  protect,
+  authorizeStrict('BUYER'),
+  idempotencyGuard.required,
+  (req, res) => orderController.createOrder(req, res)
+);
+
 // Buyer initiates checkout session for an order (Mandatory X-Idempotency-Key)
 // Strictly restricted to BUYER role (Administrators and Suppliers cannot initiate buyer payments)
 router.post(

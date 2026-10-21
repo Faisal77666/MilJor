@@ -153,6 +153,15 @@ async function runPart4D2PoolQualificationGate() {
   let server = null;
   let originalListingStock = 1000;
 
+  // Capture pre-test baseline for miljor_db preservation
+  const [initDevPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+  const [initDevRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+  const [initDevEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+  const [initDevMuts] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_mutation_history');
+  const [initDevSnaps] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
+  const [initDevOrders] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
+  const [initDevPayments] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.payments');
+
   try {
     server = http.createServer(app);
     await new Promise(resolve => server.listen(0, resolve));
@@ -1034,24 +1043,25 @@ async function runPart4D2PoolQualificationGate() {
         password: process.env.DB_PASSWORD || '',
         database: 'miljor_db'
       });
+      try {
+        const [pools] = await devConn.query('SELECT COUNT(*) AS c FROM pools');
+        const [res] = await devConn.query('SELECT COUNT(*) AS c FROM reservations');
+        const [events] = await devConn.query('SELECT COUNT(*) AS c FROM reservation_business_events');
+        const [muts] = await devConn.query('SELECT COUNT(*) AS c FROM reservation_mutation_history');
+        const [snaps] = await devConn.query('SELECT COUNT(*) AS c FROM pool_commercial_snapshots');
+        const [orders] = await devConn.query('SELECT COUNT(*) AS c FROM orders');
+        const [payments] = await devConn.query('SELECT COUNT(*) AS c FROM payments');
 
-      const [pools] = await devConn.query('SELECT COUNT(*) AS c FROM pools');
-      const [res] = await devConn.query('SELECT COUNT(*) AS c FROM reservations');
-      const [events] = await devConn.query('SELECT COUNT(*) AS c FROM reservation_business_events');
-      const [muts] = await devConn.query('SELECT COUNT(*) AS c FROM reservation_mutation_history');
-      const [snaps] = await devConn.query('SELECT COUNT(*) AS c FROM pool_commercial_snapshots');
-      const [orders] = await devConn.query('SELECT COUNT(*) AS c FROM orders');
-      const [payments] = await devConn.query('SELECT COUNT(*) AS c FROM payments');
-
-      assert.strictEqual(Number(pools[0].c), 2, 'miljor_db pools must remain 2');
-      assert.strictEqual(Number(res[0].c), 0, 'miljor_db reservations must remain 0');
-      assert.strictEqual(Number(events[0].c), 0, 'miljor_db events must remain 0');
-      assert.strictEqual(Number(muts[0].c), 0, 'miljor_db mutations must remain 0');
-      assert.strictEqual(Number(snaps[0].c), 0, 'miljor_db snapshots must remain 0');
-      assert.strictEqual(Number(orders[0].c), 0, 'miljor_db orders must remain 0');
-      assert.strictEqual(Number(payments[0].c), 0, 'miljor_db payments must remain 0');
-
-      await devConn.end();
+        assert.strictEqual(Number(pools[0].c), Number(initDevPools[0].c), `miljor_db pools must remain unchanged (${initDevPools[0].c})`);
+        assert.strictEqual(Number(res[0].c), Number(initDevRes[0].c), `miljor_db reservations must remain unchanged (${initDevRes[0].c})`);
+        assert.strictEqual(Number(events[0].c), Number(initDevEvents[0].c), `miljor_db events must remain unchanged (${initDevEvents[0].c})`);
+        assert.strictEqual(Number(muts[0].c), Number(initDevMuts[0].c), `miljor_db mutations must remain unchanged (${initDevMuts[0].c})`);
+        assert.strictEqual(Number(snaps[0].c), Number(initDevSnaps[0].c), `miljor_db snapshots must remain unchanged (${initDevSnaps[0].c})`);
+        assert.strictEqual(Number(orders[0].c), Number(initDevOrders[0].c), `miljor_db orders must remain unchanged (${initDevOrders[0].c})`);
+        assert.strictEqual(Number(payments[0].c), Number(initDevPayments[0].c), `miljor_db payments must remain unchanged (${initDevPayments[0].c})`);
+      } finally {
+        await devConn.end();
+      }
       pass('29. Database Isolation: Development database miljor_db remains 100% PRISTINE');
     } catch (err) {
       fail('29. Database Isolation: Development database miljor_db remains 100% PRISTINE', err);

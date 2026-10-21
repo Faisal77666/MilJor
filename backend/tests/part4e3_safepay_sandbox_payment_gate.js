@@ -254,6 +254,14 @@ async function runSuite() {
     // -------------------------------------------------------------------------
     console.log('\n--- SECTION 2: Commercial Fixture Setup ---');
 
+    // Capture pre-task baseline for miljor_db preservation check
+    const [initialPools] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.pools');
+    const [initialRes] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservations');
+    const [initialOrders] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.orders');
+    const [initialAttempts] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.payment_attempts');
+    const [initialPayments] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.payments');
+    const [initialEvents] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservation_business_events');
+
     // Create a qualified pool, snapshot, decisions, and order in miljor_test_db
     const [poolRes] = await db.query(
       `INSERT INTO pools (
@@ -851,12 +859,12 @@ async function runSuite() {
     const [prodPayments] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.payments');
     const [prodEvents] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservation_business_events');
 
-    assert.strictEqual(prodPools[0].cnt, 2, 'miljor_db pools must remain 2');
-    assert.strictEqual(prodRes[0].cnt, 0, 'miljor_db reservations must remain 0');
-    assert.strictEqual(prodOrders[0].cnt, 0, 'miljor_db orders must remain 0');
-    assert.strictEqual(prodAttempts[0].cnt, 0, 'miljor_db payment_attempts must remain 0');
-    assert.strictEqual(prodPayments[0].cnt, 0, 'miljor_db payments must remain 0');
-    assert.strictEqual(prodEvents[0].cnt, 0, 'miljor_db events must remain 0');
+    assert.strictEqual(prodPools[0].cnt, initialPools[0].cnt, `miljor_db pools must remain unchanged (${initialPools[0].cnt})`);
+    assert.strictEqual(prodRes[0].cnt, initialRes[0].cnt, `miljor_db reservations must remain unchanged (${initialRes[0].cnt})`);
+    assert.strictEqual(prodOrders[0].cnt, initialOrders[0].cnt, `miljor_db orders must remain unchanged (${initialOrders[0].cnt})`);
+    assert.strictEqual(prodAttempts[0].cnt, initialAttempts[0].cnt, `miljor_db payment_attempts must remain unchanged (${initialAttempts[0].cnt})`);
+    assert.strictEqual(prodPayments[0].cnt, initialPayments[0].cnt, `miljor_db payments must remain unchanged (${initialPayments[0].cnt})`);
+    assert.strictEqual(prodEvents[0].cnt, initialEvents[0].cnt, `miljor_db events must remain unchanged (${initialEvents[0].cnt})`);
     recordPass('Database isolation: miljor_db is 100% PRISTINE');
 
   } catch (err) {

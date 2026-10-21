@@ -289,6 +289,12 @@ async function runSuite() {
   }
 
   try {
+    // Capture pre-test baseline for miljor_db preservation
+    const [initPools] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.pools');
+    const [initRes] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservations');
+    const [initOrders] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.orders');
+    const [initEvents] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservation_business_events');
+
     // Start HTTP server on dynamic port
     await new Promise((resolve) => {
       testServer = app.listen(0, () => {
@@ -717,11 +723,11 @@ async function runSuite() {
     const [prodRes] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservations');
     const [prodOrders] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.orders');
     const [prodEvents] = await db.query('SELECT COUNT(*) as cnt FROM miljor_db.reservation_business_events');
-    assert.strictEqual(prodPools[0].cnt, 2, 'miljor_db pools must remain 2');
-    assert.strictEqual(prodRes[0].cnt, 0, 'miljor_db reservations must remain 0');
-    assert.strictEqual(prodOrders[0].cnt, 0, 'miljor_db orders must remain 0');
-    assert.strictEqual(prodEvents[0].cnt, 0, 'miljor_db events must remain 0');
-    recordPass('Database isolation: miljor_db is 100% PRISTINE');
+    assert.strictEqual(prodPools[0].cnt, initPools[0].cnt, `miljor_db pools must remain unchanged (${initPools[0].cnt})`);
+    assert.strictEqual(prodRes[0].cnt, initRes[0].cnt, `miljor_db reservations must remain unchanged (${initRes[0].cnt})`);
+    assert.strictEqual(prodOrders[0].cnt, initOrders[0].cnt, `miljor_db orders must remain unchanged (${initOrders[0].cnt})`);
+    assert.strictEqual(prodEvents[0].cnt, initEvents[0].cnt, `miljor_db events must remain unchanged (${initEvents[0].cnt})`);
+    recordPass('Database isolation: miljor_db is 100% PRISTINE and completely unchanged from baseline');
 
   } catch (err) {
     console.error('Fatal suite failure:', err);

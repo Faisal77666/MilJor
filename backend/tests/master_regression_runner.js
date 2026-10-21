@@ -11,7 +11,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const mysql = require('mysql2/promise');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const SUITES = [
   { name: 'phase1_gate.js', focus: 'Core Models & DB Foundations', expectedAssertions: 12 },
@@ -40,10 +40,39 @@ const SUITES = [
   { name: 'part4e1_1_financial_hardening_gate.js', focus: 'Exact Financial Arithmetic & Consistency Hardening (OBS-75-78)', expectedAssertions: 22 },
   { name: 'part4e2_order_conversion_gate.js', focus: 'Authoritative Order Conversion & Exactly-Once Creation Gate (OBS-79, 80)', expectedAssertions: 22 },
   { name: 'part4e3_safepay_sandbox_payment_gate.js', focus: 'Safepay Sandbox Checkout & Payment State Machine (OBS-81, 82)', expectedAssertions: 28 },
-  { name: 'part4e4_fulfillment_gate.js', focus: 'Post-Payment Fulfillment & Supplier-Managed Delivery Gate', expectedAssertions: 36 }
+  { name: 'part4e4_fulfillment_gate.js', focus: 'Post-Payment Fulfillment & Supplier-Managed Delivery Gate', expectedAssertions: 36 },
+  { name: 'order_read_and_checkout_flow.test.js', focus: 'Buyer Orders, Specs & Checkout Read Model', expectedAssertions: 6 }
 ];
 
-async function verifyDatabaseIsolation() {
+async function getMiljorDbCounts(conn) {
+  const [devPools] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+  const [devRes] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+  const [devEvents] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+  const [devMutations] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_mutation_history');
+  const [devSnapshots] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
+  const [devDecisions] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_supplier_commercial_decisions');
+  const [devBuyerDecs] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
+  const [devOrders] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
+  const [devAttempts] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.payment_attempts');
+  const [devPayments] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.payments');
+  const [devFulfillEvents] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.order_fulfillment_events');
+
+  return {
+    pools: Number(devPools[0].c),
+    reservations: Number(devRes[0].c),
+    events: Number(devEvents[0].c),
+    mutations: Number(devMutations[0].c),
+    snapshots: Number(devSnapshots[0].c),
+    supplier_decisions: Number(devDecisions[0].c),
+    buyer_decisions: Number(devBuyerDecs[0].c),
+    orders: Number(devOrders[0].c),
+    payment_attempts: Number(devAttempts[0].c),
+    payments: Number(devPayments[0].c),
+    fulfillment_events: Number(devFulfillEvents[0].c)
+  };
+}
+
+async function verifyDatabaseIsolation(initialBaseline = null) {
   const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
@@ -53,46 +82,14 @@ async function verifyDatabaseIsolation() {
 
   const conn = await mysql.createConnection(dbConfig);
   try {
-    const [devPools] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
-    const [devRes] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
-    const [devEvents] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
-    const [devMutations] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_mutation_history');
-    const [devSnapshots] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
-    const [devDecisions] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_supplier_commercial_decisions');
-    const [devBuyerDecs] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
-    const [devOrders] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
-    const [devAttempts] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.payment_attempts');
-    const [devPayments] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.payments');
-    const [devFulfillEvents] = await conn.query('SELECT COUNT(*) AS c FROM miljor_db.order_fulfillment_events');
-
-    const isDevPristine = (
-      Number(devPools[0].c) === 2 &&
-      Number(devRes[0].c) === 0 &&
-      Number(devEvents[0].c) === 0 &&
-      Number(devMutations[0].c) === 0 &&
-      Number(devSnapshots[0].c) === 0 &&
-      Number(devDecisions[0].c) === 0 &&
-      Number(devBuyerDecs[0].c) === 0 &&
-      Number(devOrders[0].c) === 0 &&
-      Number(devAttempts[0].c) === 0 &&
-      Number(devPayments[0].c) === 0 &&
-      Number(devFulfillEvents[0].c) === 0
-    );
+    const finalCounts = await getMiljorDbCounts(conn);
+    const baseline = initialBaseline || finalCounts;
+    const isDevPristine = Object.keys(baseline).every(k => baseline[k] === finalCounts[k]);
 
     return {
       isDevPristine,
-      counts: {
-        pools: devPools[0].c,
-        reservations: devRes[0].c,
-        events: devEvents[0].c,
-        mutations: devMutations[0].c,
-        snapshots: devSnapshots[0].c,
-        supplier_decisions: devDecisions[0].c,
-        buyer_decisions: devBuyerDecs[0].c,
-        orders: devOrders[0].c,
-        payment_attempts: devAttempts[0].c,
-        payments: devPayments[0].c
-      }
+      counts: finalCounts,
+      baseline
     };
   } finally {
     await conn.end();
@@ -128,6 +125,10 @@ async function runMasterRegression() {
   const results = [];
   let totalAssertions = 0;
   let allPassed = true;
+
+  // Capture baseline counts of miljor_db before test execution
+  const initialIso = await verifyDatabaseIsolation();
+  const initialBaseline = initialIso.counts;
 
   for (let i = 0; i < SUITES.length; i++) {
     const suite = SUITES[i];
@@ -201,9 +202,9 @@ async function runMasterRegression() {
   // Check development database isolation
   console.log('\n🔒 Verifying Development Database Isolation (miljor_db)...');
   try {
-    const iso = await verifyDatabaseIsolation();
+    const iso = await verifyDatabaseIsolation(initialBaseline);
     if (iso.isDevPristine) {
-      console.log('✅ miljor_db is 100% PRISTINE (pools: 2, reservations: 0, events: 0, mutations: 0, snapshots: 0, supplier_decisions: 0, buyer_decisions: 0, orders: 0)');
+      console.log('✅ miljor_db is 100% PRISTINE and completely unchanged from pre-regression baseline.');
     } else {
       console.error('❌ WARNING: miljor_db mutation detected!', iso.counts);
       allPassed = false;

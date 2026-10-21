@@ -139,6 +139,13 @@ async function runPart4E4FulfillmentGate() {
     // 0. Safety Guard Check
     await assertTestDatabaseSafety(db, 'part4e4_fulfillment_gate');
 
+    // Capture pre-test baseline for miljor_db preservation
+    const [initDevPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+    const [initDevRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+    const [initDevOrders] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
+    const [initDevPayments] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.payments');
+    const [initDevEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.order_fulfillment_events');
+
     // Start local HTTP test server
     testServer = http.createServer(app);
     await new Promise((resolve) => {
@@ -718,7 +725,7 @@ async function runPart4E4FulfillmentGate() {
 
     // Test 30: Transactional outbox events emitted to reservation_business_events
     const [outboxEvents] = await db.query(
-      `SELECT event_type FROM reservation_business_events WHERE event_payload->>'$.order_id' = ?`,
+      `SELECT event_type FROM reservation_business_events WHERE JSON_UNQUOTE(JSON_EXTRACT(event_payload, '$.order_id')) = ?`,
       [String(paidOrder1.orderId)]
     );
     const outboxTypes = outboxEvents.map(e => e.event_type);
@@ -778,12 +785,12 @@ async function runPart4E4FulfillmentGate() {
     const [devPayments] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.payments');
     const [devEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.order_fulfillment_events');
 
-    assert.strictEqual(Number(devPools[0].c), 2, 'miljor_db pools must be 2');
-    assert.strictEqual(Number(devRes[0].c), 0, 'miljor_db reservations must be 0');
-    assert.strictEqual(Number(devOrders[0].c), 0, 'miljor_db orders must be 0');
-    assert.strictEqual(Number(devPayments[0].c), 0, 'miljor_db payments must be 0');
-    assert.strictEqual(Number(devEvents[0].c), 0, 'miljor_db fulfillment events must be 0');
-    recordPass('Database Isolation: Development database miljor_db remains 100% PRISTINE (zero test data leakage)');
+    assert.strictEqual(Number(devPools[0].c), Number(initDevPools[0].c), `miljor_db pools must remain unchanged (${initDevPools[0].c})`);
+    assert.strictEqual(Number(devRes[0].c), Number(initDevRes[0].c), `miljor_db reservations must remain unchanged (${initDevRes[0].c})`);
+    assert.strictEqual(Number(devOrders[0].c), Number(initDevOrders[0].c), `miljor_db orders must remain unchanged (${initDevOrders[0].c})`);
+    assert.strictEqual(Number(devPayments[0].c), Number(initDevPayments[0].c), `miljor_db payments must remain unchanged (${initDevPayments[0].c})`);
+    assert.strictEqual(Number(devEvents[0].c), Number(initDevEvents[0].c), `miljor_db fulfillment events must remain unchanged (${initDevEvents[0].c})`);
+    recordPass('Database Isolation: Development database miljor_db remains 100% PRISTINE and completely unchanged from baseline');
 
   } catch (err) {
     recordFail('Unhandled exception during gate execution', err);

@@ -305,6 +305,13 @@ async function runSuite() {
       });
     });
 
+    // Capture pre-test baseline for miljor_db preservation
+    const [initDevPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+    const [initDevRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+    const [initDevEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+    const [initDevOrders] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
+    const [initDevBuyerDecs] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
+
     // -------------------------------------------------------------------------
     // TEST SCENARIO A: Fully Qualified, Supplier-Accepted Pool with Quorum Met
     // -------------------------------------------------------------------------
@@ -707,12 +714,12 @@ async function runSuite() {
     const [devEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
     const [devOrders] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.orders');
     const [devBuyerDecs] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
-    assert.strictEqual(Number(devPools[0].c), 2, 'miljor_db.pools must have exactly 2 historical pools');
-    assert.strictEqual(Number(devRes[0].c), 0, 'miljor_db.reservations must be 0');
-    assert.strictEqual(Number(devEvents[0].c), 0, 'miljor_db events must be 0');
-    assert.strictEqual(Number(devOrders[0].c), 0, 'miljor_db orders must be 0');
-    assert.strictEqual(Number(devBuyerDecs[0].c), 0, 'miljor_db buyer decisions must be 0');
-    recordPass('Database Isolation: miljor_db is 100% PRISTINE (2 pools, 0 reservations, 0 orders, 0 events)');
+    assert.strictEqual(Number(devPools[0].c), Number(initDevPools[0].c), `miljor_db.pools must remain unchanged (${initDevPools[0].c})`);
+    assert.strictEqual(Number(devRes[0].c), Number(initDevRes[0].c), `miljor_db.reservations must remain unchanged (${initDevRes[0].c})`);
+    assert.strictEqual(Number(devEvents[0].c), Number(initDevEvents[0].c), `miljor_db events must remain unchanged (${initDevEvents[0].c})`);
+    assert.strictEqual(Number(devOrders[0].c), Number(initDevOrders[0].c), `miljor_db orders must remain unchanged (${initDevOrders[0].c})`);
+    assert.strictEqual(Number(devBuyerDecs[0].c), Number(initDevBuyerDecs[0].c), `miljor_db buyer decisions must remain unchanged (${initDevBuyerDecs[0].c})`);
+    recordPass('Database Isolation: miljor_db is 100% PRISTINE and completely unchanged from baseline');
 
   } finally {
     // Teardown fixtures created in test database

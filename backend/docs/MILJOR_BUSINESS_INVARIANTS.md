@@ -2,7 +2,8 @@
 ## Canonical Single Source of Truth for Domain Rules & Safety Invariants
 
 **Project:** MilJor — Lahore-first B2B Collective Food Procurement Marketplace.  
-**Authority:** Principal Software Architect, Concurrency Specialist, Security & Financial Integrity Lead.  
+**Authority:** Principal Software Architect, Concurrency Specialist, Security & Financial Integrity Lead. 
+ 
 **Version:** 1.0 (Authored under Protocol v2.0).  
 **Scope:** Universal across all backend, database, testing, and operational phases.
 

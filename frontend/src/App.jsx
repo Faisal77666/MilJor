@@ -9,6 +9,9 @@ import { SupplierDashboardPage } from './pages/SupplierDashboardPage';
 import { CreatePoolPage } from './pages/CreatePoolPage';
 import { ApplySupplierPage } from './pages/ApplySupplierPage';
 import { AdminSuppliersPage } from './pages/AdminSuppliersPage';
+import { MyOrdersPage } from './pages/MyOrdersPage';
+import { OrderCheckoutPage } from './pages/OrderCheckoutPage';
+import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -28,6 +31,9 @@ export function App() {
               <Route path="/pools" element={<PoolsPage />} />
               <Route path="/pools/:id" element={<PoolDetailPage />} />
               <Route path="/my-reservations" element={<MyReservationsPage />} />
+              <Route path="/my-orders" element={<MyOrdersPage />} />
+              <Route path="/orders/:id/checkout" element={<OrderCheckoutPage />} />
+              <Route path="/orders/:id/payment-success" element={<PaymentSuccessPage />} />
               <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
               <Route path="/supplier/pools/new" element={<CreatePoolPage />} />
               <Route path="/become-supplier" element={<ApplySupplierPage />} />

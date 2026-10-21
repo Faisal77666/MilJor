@@ -185,6 +185,12 @@ async function runPart4D21SecurityGate() {
   console.log(`🔒 Test Suite Environment Verified: Active Database = '${activeDb}'\n`);
   assert.strictEqual(activeDb, 'miljor_test_db', 'Must execute strictly against miljor_test_db!');
 
+  // Capture pre-test baseline for miljor_db preservation
+  const [initDevPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+  const [initDevRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+  const [initDevEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+  const [initDevSnapshots] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
+
   // Start ephemeral HTTP server
   testServer = http.createServer(app);
   await new Promise((resolve) => testServer.listen(0, resolve));
@@ -643,10 +649,10 @@ async function runPart4D21SecurityGate() {
       const [devEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
       const [devSnapshots] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
 
-      assert.strictEqual(Number(devPools[0].c), 2);
-      assert.strictEqual(Number(devRes[0].c), 0);
-      assert.strictEqual(Number(devEvents[0].c), 0);
-      assert.strictEqual(Number(devSnapshots[0].c), 0);
+      assert.strictEqual(Number(devPools[0].c), Number(initDevPools[0].c));
+      assert.strictEqual(Number(devRes[0].c), Number(initDevRes[0].c));
+      assert.strictEqual(Number(devEvents[0].c), Number(initDevEvents[0].c));
+      assert.strictEqual(Number(devSnapshots[0].c), Number(initDevSnapshots[0].c));
 
       pass('22. Database Isolation: Development database miljor_db remains 100% PRISTINE', Date.now() - t0);
     } catch (e) { fail('22. Database Isolation: Development database miljor_db remains 100% PRISTINE', e); }

@@ -96,8 +96,8 @@ async function runPhase1Gate() {
     );
     const isVerified = cols.find(c => c.COLUMN_NAME === 'is_verified');
     const verStatus = cols.find(c => c.COLUMN_NAME === 'verification_status');
-    assert.strictEqual(isVerified.COLUMN_DEFAULT, '0');
-    assert.strictEqual(verStatus.COLUMN_DEFAULT, 'UNVERIFIED');
+    assert.strictEqual(isVerified.COLUMN_DEFAULT ? isVerified.COLUMN_DEFAULT.replace(/^'|'$/g, '') : null, '0');
+    assert.strictEqual(verStatus.COLUMN_DEFAULT ? verStatus.COLUMN_DEFAULT.replace(/^'|'$/g, '') : null, 'UNVERIFIED');
   });
 
   // ---------------------------------------------------------------------------
