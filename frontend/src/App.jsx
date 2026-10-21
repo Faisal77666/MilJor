@@ -8,6 +8,7 @@ import { MyReservationsPage } from './pages/MyReservationsPage';
 import { SupplierDashboardPage } from './pages/SupplierDashboardPage';
 import { CreatePoolPage } from './pages/CreatePoolPage';
 import { ApplySupplierPage } from './pages/ApplySupplierPage';
+import { AdminSuppliersPage } from './pages/AdminSuppliersPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -30,6 +31,7 @@ export function App() {
               <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
               <Route path="/supplier/pools/new" element={<CreatePoolPage />} />
               <Route path="/become-supplier" element={<ApplySupplierPage />} />
+              <Route path="/admin/suppliers" element={<AdminSuppliersPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />

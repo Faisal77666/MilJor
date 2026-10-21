@@ -129,6 +129,16 @@ export const Navbar = () => {
                 Supplier Portal
               </Link>
             )}
+
+            {isAuthenticated && isAdmin && (
+              <Link
+                to="/admin/suppliers"
+                className="text-sm font-medium text-purple-700 hover:text-purple-800 flex items-center gap-1.5 transition font-bold"
+              >
+                <ShieldCheck className="w-4 h-4 text-purple-600" />
+                Admin Approvals
+              </Link>
+            )}
           </nav>
 
           {/* Auth State CTAs */}
