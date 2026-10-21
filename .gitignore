@@ -34,9 +34,12 @@ uploads/
 backend/uploads/
 
 # Database backups & dumps
+backups/
+backend/backups/
 database/backups/
 backend/database/backups/
 *.dump
+*.sql
 *.sql.bak
 
 # Test coverage
