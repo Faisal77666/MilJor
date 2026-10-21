@@ -115,6 +115,27 @@ export const AuthProvider = ({ children }) => {
     return await authApi.resendOtp({ email });
   };
 
+  // Refresh user profile from server
+  const refreshUser = async () => {
+    try {
+      const response = await authApi.getMe();
+      if (response.success && response.data?.user) {
+        setUser(response.data.user);
+        localStorage.setItem('miljor_user', JSON.stringify(response.data.user));
+        return response.data;
+      }
+    } catch (err) {
+      console.warn('Failed to refresh user profile:', err.message);
+    }
+  };
+
+  // Apply to become a supplier
+  const applySupplier = async (formData) => {
+    const res = await authApi.applySupplier(formData);
+    await refreshUser();
+    return res;
+  };
+
   // Logout handler
   const logout = async () => {
     await authApi.logout();
@@ -131,11 +152,14 @@ export const AuthProvider = ({ children }) => {
     isSupplier: user?.role === 'SUPPLIER',
     isAdmin: ['ADMIN', 'SUPER_ADMIN'].includes(user?.role),
     isVerified: Boolean(user?.is_verified),
+    isPendingSupplier: user?.verification_status === 'PENDING_SUPPLIER_VERIFICATION',
     loading,
     login,
     register,
     verifyEmail,
     resendOtp,
+    refreshUser,
+    applySupplier,
     logout,
   };
 
