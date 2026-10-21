@@ -2,10 +2,10 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { ShoppingBag, User, LogOut, ShieldCheck, Layers, BookmarkCheck, LayoutDashboard, PlusCircle } from 'lucide-react';
+import { ShoppingBag, User, LogOut, ShieldCheck, Layers, BookmarkCheck, LayoutDashboard, PlusCircle, Building2, Clock } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, isBuyer, isSupplier, isAdmin, role, logout } = useAuth();
+  const { user, isAuthenticated, isBuyer, isSupplier, isAdmin, isPendingSupplier, role, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -91,6 +91,35 @@ export const Navbar = () => {
               </Link>
             )}
 
+            {isAuthenticated && isBuyer && (
+              <Link
+                to="/become-supplier"
+                className="text-sm font-medium text-gray-700 hover:text-emerald-600 flex items-center gap-1.5 transition"
+              >
+                {isPendingSupplier ? (
+                  <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-xs">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Supplier Review Pending
+                  </span>
+                ) : (
+                  <>
+                    <Building2 className="w-4 h-4 text-gray-500" />
+                    Become a Supplier
+                  </>
+                )}
+              </Link>
+            )}
+
+            {!isAuthenticated && (
+              <Link
+                to="/become-supplier"
+                className="text-sm font-medium text-gray-700 hover:text-emerald-600 flex items-center gap-1.5 transition"
+              >
+                <Building2 className="w-4 h-4 text-gray-500" />
+                Sell on MilJor
+              </Link>
+            )}
+
             {isAuthenticated && (isSupplier || isAdmin) && (
               <Link
                 to="/supplier/dashboard"
@@ -98,6 +127,16 @@ export const Navbar = () => {
               >
                 <LayoutDashboard className="w-4 h-4 text-teal-600" />
                 Supplier Portal
+              </Link>
+            )}
+
+            {isAuthenticated && isAdmin && (
+              <Link
+                to="/admin/suppliers"
+                className="text-sm font-medium text-purple-700 hover:text-purple-800 flex items-center gap-1.5 transition font-bold"
+              >
+                <ShieldCheck className="w-4 h-4 text-purple-600" />
+                Admin Approvals
               </Link>
             )}
           </nav>
