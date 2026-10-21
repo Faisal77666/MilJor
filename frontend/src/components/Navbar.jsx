@@ -2,10 +2,10 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { ShoppingBag, User, LogOut, ShieldCheck, Layers, BookmarkCheck } from 'lucide-react';
+import { ShoppingBag, User, LogOut, ShieldCheck, Layers, BookmarkCheck, LayoutDashboard, PlusCircle } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, isBuyer, role, logout } = useAuth();
+  const { user, isAuthenticated, isBuyer, isSupplier, isAdmin, role, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -81,7 +81,7 @@ export const Navbar = () => {
               Active Pools
             </Link>
 
-            {isAuthenticated && (
+            {isAuthenticated && isBuyer && (
               <Link
                 to="/my-reservations"
                 className="text-sm font-medium text-gray-700 hover:text-emerald-600 flex items-center gap-1.5 transition"
@@ -90,12 +90,32 @@ export const Navbar = () => {
                 My Reservations
               </Link>
             )}
+
+            {isAuthenticated && (isSupplier || isAdmin) && (
+              <Link
+                to="/supplier/dashboard"
+                className="text-sm font-medium text-gray-700 hover:text-emerald-600 flex items-center gap-1.5 transition"
+              >
+                <LayoutDashboard className="w-4 h-4 text-teal-600" />
+                Supplier Portal
+              </Link>
+            )}
           </nav>
 
           {/* Auth State CTAs */}
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
+                {(isSupplier || isAdmin) && (
+                  <Link
+                    to="/supplier/pools/new"
+                    className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    + New Pool
+                  </Link>
+                )}
+
                 <div className="hidden sm:flex flex-col items-end">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-900">

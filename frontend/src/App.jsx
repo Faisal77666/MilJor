@@ -5,6 +5,8 @@ import { Navbar } from './components/Navbar';
 import { PoolsPage } from './pages/PoolsPage';
 import { PoolDetailPage } from './pages/PoolDetailPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
+import { SupplierDashboardPage } from './pages/SupplierDashboardPage';
+import { CreatePoolPage } from './pages/CreatePoolPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -24,6 +26,8 @@ export function App() {
               <Route path="/pools" element={<PoolsPage />} />
               <Route path="/pools/:id" element={<PoolDetailPage />} />
               <Route path="/my-reservations" element={<MyReservationsPage />} />
+              <Route path="/supplier/dashboard" element={<SupplierDashboardPage />} />
+              <Route path="/supplier/pools/new" element={<CreatePoolPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />

@@ -73,6 +73,7 @@ class SupplierListingRepository {
               ps.pack_size,
               ps.pack_unit,
               ps.purchasing_unit,
+              ps.product_id,
               p.category as product_category
        FROM supplier_listings sl
        JOIN users u ON sl.supplier_id = u.id
@@ -118,6 +119,7 @@ class SupplierListingRepository {
               ps.pack_size,
               ps.pack_unit,
               ps.purchasing_unit,
+              ps.product_id,
               p.category as product_category
        FROM supplier_listings sl
        JOIN users u ON sl.supplier_id = u.id
