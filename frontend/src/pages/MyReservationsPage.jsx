@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { reservationsApi } from '../api/reservations';
+import { ordersApi } from '../api/orders';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import {
@@ -15,7 +16,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Loader2,
-  Truck
+  Truck,
+  CreditCard
 } from 'lucide-react';
 
 export const MyReservationsPage = () => {
@@ -80,6 +82,21 @@ export const MyReservationsPage = () => {
     } catch (err) {
       const errMsg = err.response?.data?.error?.message || 'Failed to cancel reservation';
       toast.error(errMsg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCreateOrderAndCheckout = async (resId) => {
+    try {
+      setActionLoading(true);
+      const res = await ordersApi.createOrder({ reservation_id: resId });
+      if (res.success && res.data?.order) {
+        toast.success('Order created! Navigating to checkout...');
+        navigate(`/orders/${res.data.order.id}/checkout`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to initialize order checkout');
     } finally {
       setActionLoading(false);
     }
@@ -378,6 +395,35 @@ export const MyReservationsPage = () => {
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Cancel Reservation
+                    </button>
+                  </div>
+                )}
+
+                {/* Footer Action: Order Checkout if Confirmed */}
+                {res.status === 'CONFIRMED' && (
+                  <div className="pt-4 border-t border-emerald-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-emerald-50/40 -mx-6 -mb-6 p-4 rounded-b-2xl">
+                    <span className="text-emerald-900 font-semibold flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      Commercial terms locked! Proceed to checkout to secure wholesale delivery.
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCreateOrderAndCheckout(res.id)}
+                      disabled={actionLoading}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm shadow-emerald-200 transition shrink-0 disabled:opacity-50"
+                    >
+                      {actionLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Preparing Checkout...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-3.5 h-3.5" />
+                          Proceed to Checkout
+                        </>
+                      )}
                     </button>
                   </div>
                 )}

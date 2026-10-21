@@ -527,10 +527,15 @@ class OrderService {
     }
 
     const [rows] = await db.query(
-      `SELECT o.*, p.pool_code, r.reservation_code 
+      `SELECT o.*, p.pool_code, p.pool_unit, r.reservation_code,
+              pr.title AS product_name, ps.quality_grade,
+              su.business_name AS supplier_name
        FROM orders o
        JOIN pools p ON o.pool_id = p.id
-       JOIN reservations r ON o.reservation_id = r.id
+       LEFT JOIN reservations r ON o.reservation_id = r.id
+       LEFT JOIN products pr ON p.product_id = pr.id
+       LEFT JOIN product_specifications ps ON p.product_spec_id = ps.id
+       LEFT JOIN users su ON o.supplier_id = su.id
        WHERE o.id = ?`,
       [orderId]
     );
@@ -569,6 +574,10 @@ class OrderService {
       reservation_code: order.reservation_code,
       pool_id: order.pool_id,
       pool_code: order.pool_code,
+      pool_unit: order.pool_unit,
+      product_name: order.product_name,
+      quality_grade: order.quality_grade,
+      supplier_name: order.supplier_name,
       buyer_id: order.buyer_id,
       supplier_id: order.supplier_id,
       snapshot_id: order.snapshot_id,
@@ -587,6 +596,97 @@ class OrderService {
       order_status: order.order_status,
       created_at: order.created_at,
       updated_at: order.updated_at
+    };
+  }
+
+  /**
+   * Lists orders for the authenticated buyer.
+   *
+   * @param {Object} params
+   * @param {Object} params.actor - Authenticated buyer
+   * @param {string} [params.status] - Optional status filter
+   * @param {number} [params.page] - Page number
+   * @param {number} [params.limit] - Page limit
+   * @returns {Promise<Object>} List of orders with pagination
+   */
+  async getMyOrders({ actor, status = null, page = 1, limit = 20 }) {
+    if (!actor || !actor.id) {
+      const err = new Error('Authentication required');
+      err.code = 'UNAUTHORIZED';
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (actor.role !== 'BUYER') {
+      const err = new Error('Only buyers can view their orders');
+      err.code = 'FORBIDDEN';
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+    const parsedLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
+    const offset = (parsedPage - 1) * parsedLimit;
+
+    const params = [actor.id];
+    let statusFilter = '';
+    if (status && status !== 'ALL') {
+      statusFilter = 'AND (o.order_status = ? OR o.payment_status = ?)';
+      params.push(status, status);
+    }
+
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total FROM orders o WHERE o.buyer_id = ? ${statusFilter}`,
+      params
+    );
+    const totalOrders = Number(countRows[0]?.total || 0);
+
+    const [rows] = await db.query(
+      `SELECT o.*, p.pool_code, p.pool_unit, r.reservation_code,
+              pr.title AS product_name, ps.quality_grade,
+              su.business_name AS supplier_name
+       FROM orders o
+       JOIN pools p ON o.pool_id = p.id
+       LEFT JOIN reservations r ON o.reservation_id = r.id
+       LEFT JOIN products pr ON p.product_id = pr.id
+       LEFT JOIN product_specifications ps ON p.product_spec_id = ps.id
+       LEFT JOIN users su ON o.supplier_id = su.id
+       WHERE o.buyer_id = ? ${statusFilter}
+       ORDER BY o.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, parsedLimit, offset]
+    );
+
+    return {
+      total: totalOrders,
+      page: parsedPage,
+      limit: parsedLimit,
+      orders: rows.map(r => ({
+        id: r.id,
+        order_code: r.order_code,
+        reservation_id: r.reservation_id,
+        reservation_code: r.reservation_code,
+        pool_id: r.pool_id,
+        pool_code: r.pool_code,
+        pool_unit: r.pool_unit,
+        product_name: r.product_name,
+        quality_grade: r.quality_grade,
+        supplier_name: r.supplier_name,
+        total_qty: Number(r.total_qty),
+        unit_price: Number(r.unit_price),
+        subtotal_amount: Number(r.subtotal_amount),
+        delivery_fee: Number(r.delivery_fee),
+        buyer_platform_fee: Number(r.buyer_platform_fee),
+        total_amount: Number(r.total_amount),
+        currency: r.currency || 'PKR',
+        delivery_type: r.delivery_type,
+        delivery_address: r.delivery_address,
+        payment_status: r.payment_status,
+        order_status: r.order_status,
+        fulfillment_status: r.fulfillment_status,
+        created_at: r.created_at,
+        updated_at: r.updated_at
+      }))
     };
   }
 

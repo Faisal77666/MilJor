@@ -150,7 +150,16 @@ class AuthController {
         data: {
           user_id: userId,
           email: email || null,
-          phone: cleanPhone
+          phone: cleanPhone,
+          user: {
+            id: userId,
+            full_name: full_name || null,
+            email: email || null,
+            phone: cleanPhone,
+            role: 'BUYER',
+            verification_status: 'UNVERIFIED',
+            is_verified: false
+          }
         }
       });
 

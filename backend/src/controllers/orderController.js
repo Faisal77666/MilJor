@@ -4,6 +4,7 @@
 // =============================================================================
 
 const safepayCheckoutService = require('../services/safepayCheckoutService');
+const orderService = require('../services/orderService');
 
 class OrderController {
 
@@ -187,6 +188,139 @@ class OrderController {
         success: false,
         error: {
           code: err.code || 'RECONCILIATION_FAILED',
+          message: err.message
+        }
+      });
+    }
+  }
+
+  /**
+   * GET /api/v1/orders/my
+   * List orders for the authenticated buyer.
+   */
+  async getMyOrders(req, res) {
+    try {
+      const actor = req.user;
+      const { status, page, limit } = req.query || {};
+
+      const result = await orderService.getMyOrders({
+        actor,
+        status: status || null,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (err) {
+      const statusCode = err.statusCode || (
+        err.code === 'UNAUTHORIZED' ? 401 :
+        err.code === 'FORBIDDEN' ? 403 : 500
+      );
+
+      return res.status(statusCode).json({
+        success: false,
+        error: {
+          code: err.code || 'LIST_ORDERS_FAILED',
+          message: err.message
+        }
+      });
+    }
+  }
+
+  /**
+   * GET /api/v1/orders/:id
+   * Get authoritative order by ID with enriched specification details.
+   */
+  async getOrderById(req, res) {
+    try {
+      const orderId = parseInt(req.params.id, 10);
+      const actor = req.user;
+
+      const order = await orderService.getOrderById({
+        orderId,
+        actor
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: { order }
+      });
+    } catch (err) {
+      const statusCode = err.statusCode || (
+        err.code === 'UNAUTHORIZED' ? 401 :
+        err.code === 'FORBIDDEN' ? 403 :
+        err.code === 'ORDER_NOT_FOUND' ? 404 : 500
+      );
+
+      return res.status(statusCode).json({
+        success: false,
+        error: {
+          code: err.code || 'GET_ORDER_FAILED',
+          message: err.message
+        }
+      });
+    }
+  }
+
+  /**
+   * POST /api/v1/orders
+   * Create an authoritative order from an accepted buyer reservation commitment.
+   */
+  async createOrder(req, res) {
+    try {
+      const { reservation_id, delivery_address, notes } = req.body || {};
+      const reservationId = parseInt(reservation_id, 10);
+      const actor = req.user;
+      const idempotencyKey = req.idempotency ? req.idempotency.key : (req.headers['x-idempotency-key'] || null);
+
+      if (!idempotencyKey) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'X-Idempotency-Key header is mandatory for order creation' }
+        });
+      }
+
+      const result = await orderService.createOrderFromBuyerCommitment({
+        reservationId,
+        actor: {
+          id: actor.id,
+          role: actor.role,
+          buyer_trust_status: actor.buyer_trust_status
+        },
+        idempotencyKey,
+        deliveryAddress: delivery_address || null,
+        notes: notes || null
+      });
+
+      if (req.idempotency && req.idempotency.setResource) {
+        await req.idempotency.setResource('orders', result.order.id);
+      }
+
+      return res.status(result.is_replay ? 200 : 201).json({
+        success: true,
+        message: result.is_replay
+          ? 'Existing order retrieved successfully for this commitment'
+          : 'Authoritative order created successfully from commercial commitment. Initial state is AWAITING_PAYMENT.',
+        data: {
+          order: result.order,
+          is_replay: result.is_replay
+        }
+      });
+    } catch (err) {
+      const statusCode = err.statusCode || (
+        err.code === 'UNAUTHORIZED' ? 401 :
+        err.code === 'FORBIDDEN' ? 403 :
+        err.code === 'NOT_FOUND' || err.code === 'ORDER_NOT_FOUND' ? 404 :
+        err.code === 'ALREADY_EXISTS' || err.code === 'ORDER_ALREADY_EXISTS' ? 409 : 422
+      );
+
+      return res.status(statusCode).json({
+        success: false,
+        error: {
+          code: err.code || 'ORDER_CREATION_FAILED',
           message: err.message
         }
       });

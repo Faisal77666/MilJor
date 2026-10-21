@@ -110,6 +110,11 @@ async function runPart4D1CommercialFoundationGate() {
 
     // Pre-seed test tokens
     const tokenOpts = { expiresIn: '1h', issuer: 'miljor-api', audience: 'miljor-app' };
+    const [initDevPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+    const [initDevRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+    const [initDevEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+    const [initDevMutations] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_mutation_history');
+    const [initDevSnapshots] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
     const supplierToken = jwt.sign(
       { id: 2, role: 'SUPPLIER', email: 'supplier1@miljor.com', verification_status: 'VERIFIED', is_verified: 1 },
       JWT_SECRET,
@@ -798,11 +803,11 @@ async function runPart4D1CommercialFoundationGate() {
       const [devMutations] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_mutation_history');
       const [devSnapshots] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
 
-      assert.strictEqual(Number(devPools[0].c), 2, 'Development pools count must remain 2');
-      assert.strictEqual(Number(devRes[0].c), 0, 'Development reservations count must remain 0');
-      assert.strictEqual(Number(devEvents[0].c), 0, 'Development events count must remain 0');
-      assert.strictEqual(Number(devMutations[0].c), 0, 'Development mutations count must remain 0');
-      assert.strictEqual(Number(devSnapshots[0].c), 0, 'Development snapshots count must remain 0');
+      assert.strictEqual(Number(devPools[0].c), Number(initDevPools[0].c), 'Development pools count must remain unchanged');
+      assert.strictEqual(Number(devRes[0].c), Number(initDevRes[0].c), 'Development reservations count must remain unchanged');
+      assert.strictEqual(Number(devEvents[0].c), Number(initDevEvents[0].c), 'Development events count must remain unchanged');
+      assert.strictEqual(Number(devMutations[0].c), Number(initDevMutations[0].c), 'Development mutations count must remain unchanged');
+      assert.strictEqual(Number(devSnapshots[0].c), Number(initDevSnapshots[0].c), 'Development snapshots count must remain unchanged');
 
       pass('33. Historical development records unaffected');
     } catch (err) { fail('33. Historical development records unaffected', err); }

@@ -247,6 +247,14 @@ async function runSuite() {
     assert.strictEqual(dbInfo[0].db_name, 'miljor_test_db', "Must run on 'miljor_test_db'");
     console.log(`✅ Database connected to ${dbInfo[0].db_name}\n`);
 
+    // Capture pre-test baseline for miljor_db preservation
+    const [initPools] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pools');
+    const [initRes] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservations');
+    const [initEvents] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.reservation_business_events');
+    const [initSnaps] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_commercial_snapshots');
+    const [initSuppDecs] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_supplier_commercial_decisions');
+    const [initBuyerDecs] = await db.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
+
     testServer = http.createServer(app);
     await new Promise((resolve) => {
       testServer.listen(0, '127.0.0.1', () => {
@@ -819,12 +827,12 @@ async function runSuite() {
         const [suppDecs] = await devConn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_supplier_commercial_decisions');
         const [buyerDecs] = await devConn.query('SELECT COUNT(*) AS c FROM miljor_db.pool_buyer_commercial_decisions');
 
-        assert.strictEqual(pools[0].c, 2, 'miljor_db pools must be exactly 2 seeded pools');
-        assert.strictEqual(res[0].c, 0, 'miljor_db reservations must be 0');
-        assert.strictEqual(events[0].c, 0, 'miljor_db events must be 0');
-        assert.strictEqual(snaps[0].c, 0, 'miljor_db commercial snapshots must be 0');
-        assert.strictEqual(suppDecs[0].c, 0, 'miljor_db supplier decisions must be 0');
-        assert.strictEqual(buyerDecs[0].c, 0, 'miljor_db buyer decisions must be 0');
+        assert.strictEqual(pools[0].c, initPools[0].c, `miljor_db pools must remain unchanged (${initPools[0].c})`);
+        assert.strictEqual(res[0].c, initRes[0].c, `miljor_db reservations must remain unchanged (${initRes[0].c})`);
+        assert.strictEqual(events[0].c, initEvents[0].c, `miljor_db events must remain unchanged (${initEvents[0].c})`);
+        assert.strictEqual(snaps[0].c, initSnaps[0].c, `miljor_db commercial snapshots must remain unchanged (${initSnaps[0].c})`);
+        assert.strictEqual(suppDecs[0].c, initSuppDecs[0].c, `miljor_db supplier decisions must remain unchanged (${initSuppDecs[0].c})`);
+        assert.strictEqual(buyerDecs[0].c, initBuyerDecs[0].c, `miljor_db buyer decisions must remain unchanged (${initBuyerDecs[0].c})`);
       } finally {
         devConn.release();
       }
